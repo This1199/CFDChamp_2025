@@ -142,7 +142,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, defineProps } from 'vue'
+
+const props = defineProps({
+  chislo: Number
+})
 
 // Предопределённые корректные тапы для 16-битного LFSR (максимальная длина = 65535)
 const tapPresets = [
@@ -152,7 +156,7 @@ const tapPresets = [
 ]
 
 const selectedPreset = ref('preset2')
-const state = ref(0xACE1) // Ненулевое начальное состояние (часто используется)
+const state = ref(props.chislo) // Ненулевое начальное состояние (часто используется)
 const isRunning = ref(false)
 const justUpdated = ref(false)
 

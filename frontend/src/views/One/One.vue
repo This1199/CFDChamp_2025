@@ -5,6 +5,9 @@ import BtnStar from '@/components/BTN/BtnStar.vue'
 import MyRandom from '@/components/Random/MyRandom.vue'
 import { storeToRefs } from 'pinia'
 import MyLinerRegister from '@/components/LineRegister/MyLinerRegister.vue'
+import '@/assets/fonts/fonts.css'
+
+
 
 const visibleComponents = ref([])
 const isAnimating = ref(false)
@@ -16,6 +19,44 @@ const isSpaceVideoPlaying = ref(false)
 const isSunVideoPlaying = ref(false)
 const currentProgress = ref(0)
 const currentVideo = ref('space') // 'space' или 'sun'
+// Добавьте эти переменные для анимации числа
+const showNumber = ref(false)
+const numberPosition = ref({ y: '50%', opacity: 1 })
+
+// Функция для показа числа
+const showCenterNumber = () => {
+  showNumber.value = true
+  numberPosition.value = { y: '50%', opacity: 1 }
+  console.log("OK")
+  // Через секунду начинаем анимацию исчезновения
+  setTimeout(() => {
+    numberPosition.value = { y: '400%', opacity: 0 }
+    
+    // После завершения анимации скрываем элемент
+    setTimeout(() => {
+      showNumber.value = false
+    }, 1000)
+  }, 1000)
+}
+
+// Добавьте переменную для отслеживания первого показа
+const isFirstSunPlay = ref(true)
+
+// Обработчик начала воспроизведения Sun видео
+const onSunVideoPlay = () => {
+  console.log('Sun видео началось')
+  
+  // Показываем число только при первом запуске
+  if (isFirstSunPlay.value) {
+    console.log('Первый запуск Sun видео, показываем число')
+    showCenterNumber()
+    isFirstSunPlay.value = false
+  }
+}
+
+
+const chislo = ref(0xB211)
+
 
 // Инициализируем хранилище
 const dataStore = useStarStore()
@@ -132,6 +173,13 @@ const startSunVideo = async () => {
       await sunVideoRef.value.play()
       isSunVideoPlaying.value = true
       console.log('Sun видео запущено')
+      
+      // ВСЕГДА показываем число при запуске Sun видео
+      if (isFirstSunPlay.value) {
+        console.log('Показываем число')
+        showCenterNumber()
+        isFirstSunPlay.value = false
+      }
     } catch (error) {
       console.log('Ошибка воспроизведения Sun видео:', error)
       isSunVideoPlaying.value = false
@@ -173,11 +221,18 @@ const onVideoError = (videoType) => {
   }
 }
 
-// Обработчики окончания видео
+const showFlash = ref(false)
+
 const onSpaceVideoEnded = () => {
   console.log('Space видео закончилось, запускаем Sun видео')
   isSpaceVideoPlaying.value = false
-  startSunVideo()
+  
+  // Показываем красную вспышку
+  showFlash.value = true
+  setTimeout(() => {
+    showFlash.value = false
+    startSunVideo()
+  }, 300)
 }
 
 const onSunVideoEnded = () => {
@@ -194,6 +249,9 @@ const onSunVideoEnded = () => {
 const showMultipleRandom = async () => {
   if (isAnimating.value) return
   
+  // СБРОСИТЬ ФЛАГ ПЕРЕД КАЖДЫМ ЗАПУСКОМ
+  isFirstSunPlay.value = true
+  
   // Запускаем Space видео
   await startSpaceVideo()
   
@@ -201,6 +259,9 @@ const showMultipleRandom = async () => {
   visibleComponents.value = []
   occupiedPositions.value = []
   currentProgress.value = 0
+  
+  // Ждем завершения анимации числа перед показом компонентов
+  await new Promise(resolve => setTimeout(resolve, 2100))
   
   const totalComponents = 10
   
@@ -265,11 +326,13 @@ const showMultipleRandom = async () => {
   // Не останавливаем видео - Sun видео продолжает зацикленно играть
 }
 
-// Останавливаем анимацию принудительно
+
+// Сбросьте флаг при остановке анимации
 const pauseAnimation = () => {
   if (isAnimating.value) {
     isAnimating.value = false
     currentProgress.value = 0
+    isFirstSunPlay.value = true // Сбрасываем флаг
     
     visibleComponents.value.forEach(component => {
       if (component.timer) {
@@ -285,6 +348,7 @@ const pauseAnimation = () => {
 
 // Жизненный цикл
 onMounted(() => {
+
   console.log('Компонент монтирован - видео готовы к запуску')
   console.log('Данные из хранилища:', componentsData.value)
 })
@@ -324,6 +388,11 @@ onUnmounted(() => {
           <source src="@/assets/Space.mp4" type="video/mp4">
         </video>
         
+        <div 
+    v-if="showFlash"
+    class="video-transition-overlay"
+  ></div>
+
         <!-- Sun видео (второе, зацикленное) -->
         <video
           ref="sunVideoRef"
@@ -334,6 +403,7 @@ onUnmounted(() => {
           @loadeddata="onSunVideoLoad"
           @error="onVideoError('sun')"
           @ended="onSunVideoEnded"
+          @play="onSunVideoPlay" 
           class="background-video sun-video"
           :class="{ 
             'video-playing': isSunVideoPlaying,
@@ -343,6 +413,18 @@ onUnmounted(() => {
         >
           <source src="@/assets/Sun.mp4" type="video/mp4">
         </video>
+        
+        <!-- Анимированное число -->
+        <div 
+          v-if="showNumber"
+          class="center-number"
+          :style="{
+            transform: `translate(-50%, ${numberPosition.y})`,
+            opacity: numberPosition.opacity
+          }"
+        >
+          {{chislo.toString(2).toUpperCase()}}
+        </div>
         
         <!-- Индикаторы состояния видео -->
         <div v-if="!isSpaceVideoLoaded && !isSpaceVideoPlaying" class="video-loading">
@@ -403,12 +485,60 @@ onUnmounted(() => {
       /> 
     </div>
     <div>
-      <MyLinerRegister/>
+      <MyLinerRegister
+      :chislo="chislo"
+      />
     </div>
   </div>
 </template>
 
 <style scoped>
+.center-number {
+  position: absolute;
+  top: 250px;
+  left: 50%;
+  font-size: 40px;
+  font-weight: 900;
+  color: white;
+  z-index: 5;
+  transition: all 1s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  font-family: 'Atmospheric', sans-serif;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+
+.video-transition-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle,rgba(255, 236, 94, 0.811) 0%, rgba(0, 0, 0, 0) 50%);
+  z-index: 3;
+  opacity: 0;
+  pointer-events: none;
+  animation: redFlash 0.6s ease-in-out;
+}
+
+@keyframes redFlash {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.2);
+  }
+}
+
 .one {
   position: relative;
   min-height: 70vh;
@@ -505,7 +635,7 @@ onUnmounted(() => {
   top: 10px;
   left: 10px;
   background: rgba(0, 0, 0, 0.85);
-  color: white;
+  color: rgb(255, 255, 255);
   padding: 12px 16px;
   border-radius: 10px;
   z-index: 4;
