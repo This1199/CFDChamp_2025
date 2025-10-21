@@ -409,7 +409,6 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-
 .one {
   position: relative;
   min-height: 70vh;
