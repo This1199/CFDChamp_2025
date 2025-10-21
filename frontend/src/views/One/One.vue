@@ -4,6 +4,7 @@ import { useStarStore } from '@/stores/useStartStore'
 import BtnStar from '@/components/BTN/BtnStar.vue'
 import MyRandom from '@/components/Random/MyRandom.vue'
 import { storeToRefs } from 'pinia'
+import MyLinerRegister from '@/components/LineRegister/MyLinerRegister.vue'
 
 const visibleComponents = ref([])
 const isAnimating = ref(false)
@@ -400,6 +401,9 @@ onUnmounted(() => {
         :disabled="isAnimating"
         @click="showMultipleRandom"
       /> 
+    </div>
+    <div>
+      <MyLinerRegister/>
     </div>
   </div>
 </template>
