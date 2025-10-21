@@ -7,14 +7,18 @@ import { storeToRefs } from 'pinia'
 
 const visibleComponents = ref([])
 const isAnimating = ref(false)
-const videoRef = ref(null)
-const isVideoLoaded = ref(false)
-const isVideoPlaying = ref(false)
+const spaceVideoRef = ref(null)
+const sunVideoRef = ref(null)
+const isSpaceVideoLoaded = ref(false)
+const isSunVideoLoaded = ref(false)
+const isSpaceVideoPlaying = ref(false)
+const isSunVideoPlaying = ref(false)
 const currentProgress = ref(0)
+const currentVideo = ref('space') // 'space' или 'sun'
 
 // Инициализируем хранилище
 const dataStore = useStarStore()
-const { componentsData } = storeToRefs(dataStore) // Исправлено: используем правильное имя состояния
+const { componentsData } = storeToRefs(dataStore)
 
 // Массив для отслеживания занятых позиций
 const occupiedPositions = ref([])
@@ -84,16 +88,13 @@ const getRandomPosition = () => {
 
 // Функция для получения данных компонента из хранилища
 const getComponentData = (index) => {
-  // Получаем данные из хранилища
   const data = componentsData.value
   
-  // Если в хранилище есть данные, используем их
   if (data && data.length > 0) {
-    const dataIndex = index % data.length // Циклически используем данные
+    const dataIndex = index % data.length
     return data[dataIndex]
   }
   
-  // Fallback данные, если в хранилище ничего нет
   return {
     title: `Компонент ${index + 1}`,
     description: `Это описание для компонента ${index + 1}`,
@@ -107,42 +108,93 @@ const getComponentData = (index) => {
 }
 
 // Управление видео
-const startVideo = async () => {
-  if (videoRef.value && !isVideoPlaying.value) {
+const startSpaceVideo = async () => {
+  if (spaceVideoRef.value && !isSpaceVideoPlaying.value) {
     try {
-      await videoRef.value.play()
-      isVideoPlaying.value = true
-      console.log('Видео запущено')
+      // Скрываем солнце, показываем космос
+      currentVideo.value = 'space'
+      await spaceVideoRef.value.play()
+      isSpaceVideoPlaying.value = true
+      console.log('Space видео запущено')
     } catch (error) {
-      console.log('Ошибка воспроизведения видео:', error)
-      isVideoPlaying.value = false
+      console.log('Ошибка воспроизведения Space видео:', error)
+      isSpaceVideoPlaying.value = false
     }
   }
 }
 
-const stopVideo = () => {
-  if (videoRef.value && isVideoPlaying.value) {
-    videoRef.value.pause()
-    videoRef.value.currentTime = 0
-    isVideoPlaying.value = false
-    console.log('Видео остановлено')
+const startSunVideo = async () => {
+  if (sunVideoRef.value && !isSunVideoPlaying.value) {
+    try {
+      // Скрываем космос, показываем солнце
+      currentVideo.value = 'sun'
+      await sunVideoRef.value.play()
+      isSunVideoPlaying.value = true
+      console.log('Sun видео запущено')
+    } catch (error) {
+      console.log('Ошибка воспроизведения Sun видео:', error)
+      isSunVideoPlaying.value = false
+    }
   }
 }
 
-const onVideoLoad = () => {
-  isVideoLoaded.value = true
-  console.log('Видео загружено')
+const stopAllVideos = () => {
+  if (spaceVideoRef.value) {
+    spaceVideoRef.value.pause()
+    spaceVideoRef.value.currentTime = 0
+    isSpaceVideoPlaying.value = false
+  }
+  if (sunVideoRef.value) {
+    sunVideoRef.value.pause()
+    sunVideoRef.value.currentTime = 0
+    isSunVideoPlaying.value = false
+  }
+  console.log('Все видео остановлены')
 }
 
-const onVideoError = () => {
-  console.error('Ошибка загрузки видео')
-  isVideoLoaded.value = false
+// Обработчики загрузки видео
+const onSpaceVideoLoad = () => {
+  isSpaceVideoLoaded.value = true
+  console.log('Space видео загружено')
+}
+
+const onSunVideoLoad = () => {
+  isSunVideoLoaded.value = true
+  console.log('Sun видео загружено')
+}
+
+const onVideoError = (videoType) => {
+  console.error(`Ошибка загрузки ${videoType} видео`)
+  if (videoType === 'space') {
+    isSpaceVideoLoaded.value = false
+  } else {
+    isSunVideoLoaded.value = false
+  }
+}
+
+// Обработчики окончания видео
+const onSpaceVideoEnded = () => {
+  console.log('Space видео закончилось, запускаем Sun видео')
+  isSpaceVideoPlaying.value = false
+  startSunVideo()
+}
+
+const onSunVideoEnded = () => {
+  console.log('Sun видео закончилось, зацикливаем его')
+  // Зацикливаем Sun видео
+  if (sunVideoRef.value) {
+    sunVideoRef.value.currentTime = 0
+    sunVideoRef.value.play().catch(error => {
+      console.log('Ошибка при перезапуске Sun видео:', error)
+    })
+  }
 }
 
 const showMultipleRandom = async () => {
   if (isAnimating.value) return
   
-  await startVideo()
+  // Запускаем Space видео
+  await startSpaceVideo()
   
   isAnimating.value = true
   visibleComponents.value = []
@@ -170,7 +222,6 @@ const showMultipleRandom = async () => {
       await new Promise(resolve => setTimeout(resolve, 500))
     }
     
-    // Получаем данные из хранилища вместо генерации
     const componentData = getComponentData(i)
     
     const newComponent = {
@@ -210,7 +261,7 @@ const showMultipleRandom = async () => {
   
   currentProgress.value = 0
   isAnimating.value = false
-  stopVideo()
+  // Не останавливаем видео - Sun видео продолжает зацикленно играть
 }
 
 // Останавливаем анимацию принудительно
@@ -227,20 +278,23 @@ const pauseAnimation = () => {
     
     visibleComponents.value = []
     occupiedPositions.value = []
-    stopVideo()
+    stopAllVideos()
   }
 }
 
 // Жизненный цикл
 onMounted(() => {
-  console.log('Компонент монтирован - видео готово к запуску')
+  console.log('Компонент монтирован - видео готовы к запуску')
   console.log('Данные из хранилища:', componentsData.value)
 })
 
 onUnmounted(() => {
   pauseAnimation()
-  if (videoRef.value) {
-    videoRef.value.src = ''
+  if (spaceVideoRef.value) {
+    spaceVideoRef.value.src = ''
+  }
+  if (sunVideoRef.value) {
+    sunVideoRef.value.src = ''
   }
 })
 </script>
@@ -248,24 +302,57 @@ onUnmounted(() => {
 <template>
   <div class="one" data-aos="zoom-in">
     <div class="random-container">
-      <!-- Видеофон -->
+      <!-- Видеофоны -->
       <div class="video-background">
+        <!-- Space видео (первое) -->
         <video
-          ref="videoRef"
+          ref="spaceVideoRef"
+          muted
+          playsinline
+          preload="auto"
+          @loadeddata="onSpaceVideoLoad"
+          @error="onVideoError('space')"
+          @ended="onSpaceVideoEnded"
+          class="background-video space-video"
+          :class="{ 
+            'video-playing': isSpaceVideoPlaying,
+            'video-visible': currentVideo === 'space',
+            'video-hidden': currentVideo !== 'space'
+          }"
+        >
+          <source src="@/assets/Space.mp4" type="video/mp4">
+        </video>
+        
+        <!-- Sun видео (второе, зацикленное) -->
+        <video
+          ref="sunVideoRef"
           muted
           loop
           playsinline
-          preload="metadata" 
-          @loadeddata="onVideoLoad"
-          @error="onVideoError"
-          class="background-video"
-          :class="{ 'video-playing': isVideoPlaying }"
+          preload="auto"
+          @loadeddata="onSunVideoLoad"
+          @error="onVideoError('sun')"
+          @ended="onSunVideoEnded"
+          class="background-video sun-video"
+          :class="{ 
+            'video-playing': isSunVideoPlaying,
+            'video-visible': currentVideo === 'sun',
+            'video-hidden': currentVideo !== 'sun'
+          }"
         >
-          <source src="@/assets/Space.mp4" type="video/mp4">
-          <div class="video-fallback">
-            Ваш браузер не поддерживает видео
-          </div>
+          <source src="@/assets/Sun.mp4" type="video/mp4">
         </video>
+        
+        <!-- Индикаторы состояния видео -->
+        <div v-if="!isSpaceVideoLoaded && !isSpaceVideoPlaying" class="video-loading">
+          <div class="loading-spinner"></div>
+          Загрузка Space видео...
+        </div>
+        
+        <div v-else-if="!isSunVideoLoaded && !isSunVideoPlaying && currentVideo === 'sun'" class="video-loading">
+          <div class="loading-spinner"></div>
+          Загрузка Sun видео...
+        </div>
       </div>
       
       <!-- Компоненты поверх видео -->
@@ -281,11 +368,6 @@ onUnmounted(() => {
         />
       </TransitionGroup>
       
-      <!-- Индикатор загрузки видео -->
-      <div v-if="!isVideoLoaded && !isVideoPlaying" class="video-loading">
-        Загрузка фона...
-      </div>
-      
       <!-- Счетчик и прогресс -->
       <div v-if="isAnimating" class="animation-progress">
         <div class="progress-text">
@@ -300,6 +382,12 @@ onUnmounted(() => {
         <div class="progress-details">
           <span class="detail-item">Текущий: {{ currentProgress }}</span>
           <span class="detail-item">Видимых: {{ visibleComponents.filter(c => c.visible).length }}</span>
+          <span class="detail-item" :class="{ 
+            'video-space': currentVideo === 'space',
+            'video-sun': currentVideo === 'sun'
+          }">
+            Видео: {{ currentVideo === 'space' ? 'Space' : 'Sun' }}
+          </span>
         </div>
       </div>
     </div>
@@ -355,6 +443,56 @@ onUnmounted(() => {
   height: 100%;
   object-fit: cover;
   object-position: center;
+  transition: opacity 0.8s ease-in-out;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.space-video,
+.sun-video {
+  opacity: 1;
+}
+
+.video-visible {
+  opacity: 1;
+  z-index: 1;
+}
+
+.video-hidden {
+  opacity: 0;
+  z-index: 0;
+}
+
+/* Индикаторы состояния видео */
+.video-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 15px 25px;
+  border-radius: 10px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* Улучшенный прогресс анимации */
@@ -367,7 +505,7 @@ onUnmounted(() => {
   padding: 12px 16px;
   border-radius: 10px;
   z-index: 4;
-  min-width: 180px;
+  min-width: 200px;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -396,7 +534,8 @@ onUnmounted(() => {
 
 .progress-details {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px;
   font-size: 11px;
   opacity: 0.7;
 }
@@ -405,6 +544,16 @@ onUnmounted(() => {
   padding: 2px 6px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
+}
+
+.detail-item.video-space {
+  background: rgba(59, 130, 246, 0.3);
+  color: #3b82f6;
+}
+
+.detail-item.video-sun {
+  background: rgba(234, 179, 8, 0.3);
+  color: #eab308;
 }
 
 /* Стили для компонентов */
@@ -436,32 +585,6 @@ onUnmounted(() => {
   gap: 15px;
   align-items: center;
   margin-top: 20px;
-}
-
-/* Информация об источнике данных */
-.data-source-info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  margin-top: 15px;
-}
-
-.info-badge {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.data-stats {
-  font-size: 12px;
-  color: #6b7280;
-  background: rgba(99, 102, 241, 0.1);
-  padding: 4px 12px;
-  border-radius: 12px;
 }
 
 /* Анимации */
@@ -499,17 +622,13 @@ onUnmounted(() => {
 /* Адаптивность */
 @media (max-width: 768px) {
   .animation-progress {
-    min-width: 160px;
+    min-width: 180px;
     padding: 10px 12px;
   }
   
   .progress-details {
     flex-direction: column;
     gap: 2px;
-  }
-  
-  .data-source-info {
-    text-align: center;
   }
 }
 </style>
