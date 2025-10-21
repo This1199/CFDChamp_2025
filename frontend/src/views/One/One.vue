@@ -18,7 +18,7 @@ const isSunVideoPlaying = ref(false)
 const currentProgress = ref(0)
 const currentVideo = ref('space') // 'space' или 'sun'
 const startSdvig = ref(false)
-
+const showMuteButton = ref(false) // Добавляем состояние для показа кнопки
 
 // Аудио ссылки и состояния
 const audioRefs = {
@@ -38,6 +38,13 @@ const audioStates = {
 // Добавьте эти переменные для анимации числа
 const showNumber = ref(false)
 const numberPosition = ref({ y: '50%', opacity: 1 })
+
+// Функция для заглушения всех аудио
+const muteAllAudio = () => {
+  stopAllAudio()
+  console.log('Все аудио заглушены')
+  showMuteButton.value = false // Скрываем кнопку после нажатия
+}
 
 // Функция для показа числа
 const showCenterNumber = () => {
@@ -203,9 +210,13 @@ const stopAllAudio = () => {
 const onAudioEnded = (audioNumber) => {
   audioStates[audioNumber].value = false
   console.log(`Аудио ${audioNumber} завершено`)
+  if(showMuteButton.value){
   switch (audioNumber)
   {
-    case 1: playAudio(2); 
+    
+    case 1:
+      
+    playAudio(2); 
 
     window.scrollTo({
     top: 900,
@@ -221,7 +232,7 @@ const onAudioEnded = (audioNumber) => {
     break;
     case 3: playAudio(4); break;
   }
-  
+}
 }
 
 // Управление видео
@@ -324,14 +335,18 @@ const onSunVideoEnded = () => {
 const showMultipleRandom = async () => {
   if (isAnimating.value) return
   
-  // ЗАПУСКАЕМ ПЕРВОЕ АУДИО ПРИ НАЧАЛЕ АНИМАЦИИ
+  // ПОКАЗЫВАЕМ КНОПКУ ЗАГЛУШЕНИЯ
+  showMuteButton.value = true
   
+  // ЗАПУСКАЕМ ПЕРВОЕ АУДИО ПРИ НАЧАЛЕ АНИМАЦИИ
   await playAudio(1)
+  
   setTimeout(async () => {
+    if( showMuteButton.value) {
     window.scrollTo({
     top: 0,
     behavior: 'smooth'
-  })
+  })}
     
   // СБРОСИТЬ ФЛАГ ПЕРЕД КАЖДЫМ ЗАПУСКОМ
   isFirstSunPlay.value = true
@@ -411,6 +426,8 @@ const showMultipleRandom = async () => {
 }, 9000)
 }
 
+
+
 // Сбросьте флаг при остановке анимации
 const pauseAnimation = () => {
   if (isAnimating.value) {
@@ -428,6 +445,7 @@ const pauseAnimation = () => {
     occupiedPositions.value = []
     stopAllVideos()
     stopAllAudio() // Останавливаем все аудио
+    showMuteButton.value = false // Скрываем кнопку при остановке
   }
 }
 
@@ -616,7 +634,17 @@ onUnmounted(() => {
         size="medium"
         :disabled="isAnimating"
         @click="showMultipleRandom"
-      /> 
+      />
+
+      <!-- Кнопка заглушения Android -->
+      <button 
+        v-if="showMuteButton"
+        class="mute-android-button"
+        @click="muteAllAudio"
+      >
+        <span class="button-icon">🔇</span>
+        Заглушить Android
+      </button>
     </div>
     <div>
       <MyLinerRegister
@@ -858,6 +886,42 @@ onUnmounted(() => {
   gap: 15px;
   align-items: center;
   margin-top: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Кнопка заглушения Android */
+.mute-android-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.mute-android-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+}
+
+.mute-android-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.button-icon {
+  font-size: 16px;
 }
 
 /* Анимации */
@@ -902,6 +966,16 @@ onUnmounted(() => {
   .progress-details {
     flex-direction: column;
     gap: 2px;
+  }
+
+  .controls {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .mute-android-button {
+    width: 100%;
+    justify-content: center;
   }
 }
 </style>
