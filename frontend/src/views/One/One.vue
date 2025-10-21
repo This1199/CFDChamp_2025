@@ -7,8 +7,6 @@ import { storeToRefs } from 'pinia'
 import MyLinerRegister from '@/components/LineRegister/MyLinerRegister.vue'
 import '@/assets/fonts/fonts.css'
 
-
-
 const visibleComponents = ref([])
 const isAnimating = ref(false)
 const spaceVideoRef = ref(null)
@@ -19,6 +17,24 @@ const isSpaceVideoPlaying = ref(false)
 const isSunVideoPlaying = ref(false)
 const currentProgress = ref(0)
 const currentVideo = ref('space') // 'space' или 'sun'
+const startSdvig = ref(false)
+
+
+// Аудио ссылки и состояния
+const audioRefs = {
+  1: ref(null),
+  2: ref(null),
+  3: ref(null),
+  4: ref(null)
+}
+
+const audioStates = {
+  1: ref(false),
+  2: ref(false),
+  3: ref(false),
+  4: ref(false)
+}
+
 // Добавьте эти переменные для анимации числа
 const showNumber = ref(false)
 const numberPosition = ref({ y: '50%', opacity: 1 })
@@ -54,9 +70,7 @@ const onSunVideoPlay = () => {
   }
 }
 
-
 const chislo = ref(0xB211)
-
 
 // Инициализируем хранилище
 const dataStore = useStarStore()
@@ -147,6 +161,67 @@ const getComponentData = (index) => {
       `Функция ${index + 1}.4`
     ]
   }
+}
+
+// Управление аудио
+const playAudio = async (audioNumber) => {
+  const audioRef = audioRefs[audioNumber]
+  const audioState = audioStates[audioNumber]
+  
+  if (audioRef.value && !audioState.value) {
+    try {
+      audioRef.value.currentTime = 0
+      await audioRef.value.play()
+      audioState.value = true
+      console.log(`Аудио ${audioNumber} запущено`)
+    } catch (error) {
+      console.log(`Ошибка воспроизведения аудио ${audioNumber}:`, error)
+      audioState.value = false
+    }
+  }
+}
+
+const stopAudio = (audioNumber) => {
+  const audioRef = audioRefs[audioNumber]
+  const audioState = audioStates[audioNumber]
+  
+  if (audioRef.value) {
+    audioRef.value.pause()
+    audioRef.value.currentTime = 0
+    audioState.value = false
+  }
+}
+
+const stopAllAudio = () => {
+  Object.keys(audioRefs).forEach(audioNumber => {
+    stopAudio(audioNumber)
+  })
+  console.log('Все аудио остановлены')
+}
+
+// Обработчики окончания аудио
+const onAudioEnded = (audioNumber) => {
+  audioStates[audioNumber].value = false
+  console.log(`Аудио ${audioNumber} завершено`)
+  switch (audioNumber)
+  {
+    case 1: playAudio(2); 
+
+    window.scrollTo({
+    top: 900,
+    behavior: 'smooth'})
+    setTimeout(() => {
+    startSdvig.value = true
+    }, 2000)
+    break;
+    case 2: playAudio(3); 
+    window.scrollTo({
+    top: 0,
+    behavior: 'smooth'})
+    break;
+    case 3: playAudio(4); break;
+  }
+  
 }
 
 // Управление видео
@@ -249,6 +324,15 @@ const onSunVideoEnded = () => {
 const showMultipleRandom = async () => {
   if (isAnimating.value) return
   
+  // ЗАПУСКАЕМ ПЕРВОЕ АУДИО ПРИ НАЧАЛЕ АНИМАЦИИ
+  
+  await playAudio(1)
+  setTimeout(async () => {
+    window.scrollTo({
+    top: 0,
+    behavior: 'smooth'
+  })
+    
   // СБРОСИТЬ ФЛАГ ПЕРЕД КАЖДЫМ ЗАПУСКОМ
   isFirstSunPlay.value = true
   
@@ -324,8 +408,8 @@ const showMultipleRandom = async () => {
   currentProgress.value = 0
   isAnimating.value = false
   // Не останавливаем видео - Sun видео продолжает зацикленно играть
+}, 9000)
 }
-
 
 // Сбросьте флаг при остановке анимации
 const pauseAnimation = () => {
@@ -343,12 +427,12 @@ const pauseAnimation = () => {
     visibleComponents.value = []
     occupiedPositions.value = []
     stopAllVideos()
+    stopAllAudio() // Останавливаем все аудио
   }
 }
 
 // Жизненный цикл
 onMounted(() => {
-
   console.log('Компонент монтирован - видео готовы к запуску')
   console.log('Данные из хранилища:', componentsData.value)
 })
@@ -366,6 +450,47 @@ onUnmounted(() => {
 
 <template>
   <div class="one" data-aos="zoom-in">
+    <!-- Аудио элементы -->
+    <audio
+      :ref="audioRefs[1]"
+      preload="auto"
+      @ended="onAudioEnded(1)"
+      @error="console.error('Ошибка загрузки аудио 1')"
+    >
+      <source src="@/assets/audio/1.mp3" type="audio/mpeg">
+      Ваш браузер не поддерживает аудио элементы.
+    </audio>
+    
+    <audio
+      :ref="audioRefs[2]"
+      preload="auto"
+      @ended="onAudioEnded(2)"
+      @error="console.error('Ошибка загрузки аудио 2')"
+    >
+      <source src="@/assets/audio/2.mp3" type="audio/mpeg">
+      Ваш браузер не поддерживает аудио элементы.
+    </audio>
+    
+    <audio
+      :ref="audioRefs[3]"
+      preload="auto"
+      @ended="onAudioEnded(3)"
+      @error="console.error('Ошибка загрузки аудио 3')"
+    >
+      <source src="@/assets/audio/3.mp3" type="audio/mpeg">
+      Ваш браузер не поддерживает аудио элементы.
+    </audio>
+    
+    <audio
+      :ref="audioRefs[4]"
+      preload="auto"
+      @ended="onAudioEnded(4)"
+      @error="console.error('Ошибка загрузки аудио 4')"
+    >
+      <source src="@/assets/audio/4.mp3" type="audio/mpeg">
+      Ваш браузер не поддерживает аудио элементы.
+    </audio>
+    
     <div class="random-container">
       <!-- Видеофоны -->
       <div class="video-background">
@@ -389,9 +514,9 @@ onUnmounted(() => {
         </video>
         
         <div 
-    v-if="showFlash"
-    class="video-transition-overlay"
-  ></div>
+          v-if="showFlash"
+          class="video-transition-overlay"
+        ></div>
 
         <!-- Sun видео (второе, зацикленное) -->
         <video
@@ -471,6 +596,15 @@ onUnmounted(() => {
           }">
             Видео: {{ currentVideo === 'space' ? 'Space' : 'Sun' }}
           </span>
+          <!-- Индикаторы аудио -->
+          <span 
+            v-for="i in 4" 
+            :key="i"
+            class="detail-item audio-indicator"
+            :class="{ 'audio-playing': audioStates[i].value }"
+          >
+            Аудио{{ i }}: {{ audioStates[i].value ? '▶' : '⏸' }}
+          </span>
         </div>
       </div>
     </div>
@@ -486,7 +620,8 @@ onUnmounted(() => {
     </div>
     <div>
       <MyLinerRegister
-      :chislo="chislo"
+        :chislo="chislo"
+        :startSdvig="startSdvig"
       />
     </div>
   </div>
@@ -509,7 +644,6 @@ onUnmounted(() => {
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
-
 
 .video-transition-overlay {
   position: absolute;
@@ -688,6 +822,11 @@ onUnmounted(() => {
 .detail-item.video-sun {
   background: rgba(234, 179, 8, 0.3);
   color: #eab308;
+}
+
+.detail-item.audio-indicator.audio-playing {
+  background: rgba(34, 197, 94, 0.3);
+  color: #22c55e;
 }
 
 /* Стили для компонентов */

@@ -145,8 +145,11 @@
 import { ref, computed, watch, defineProps } from 'vue'
 
 const props = defineProps({
-  chislo: Number
+  chislo: Number,
+  startSdvig: Boolean
 })
+
+
 
 // Предопределённые корректные тапы для 16-битного LFSR (максимальная длина = 65535)
 const tapPresets = [
@@ -159,6 +162,15 @@ const selectedPreset = ref('preset2')
 const state = ref(props.chislo) // Ненулевое начальное состояние (часто используется)
 const isRunning = ref(false)
 const justUpdated = ref(false)
+
+// Watch для отслеживания изменения startSdvig
+watch(() => props.startSdvig, (newValue) => {
+  if (newValue) {
+    console.log('startSdvig стал true, запускаем LFSR')
+    isRunning.value = true
+    start()
+  }
+})
 
 // Получаем активные тапы (в индексах битов от 0 до 15)
 const activeTaps = computed(() => {
